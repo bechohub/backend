@@ -16,7 +16,7 @@ const login = async (req, res, next) => {
   try {
     const { email, password } = req.body;
     const { token, user } = await authService.loginUser(email, password);
-    
+
     res.status(200).json({ success: true, token, data: user });
   } catch (error) {
     if (error.message === 'Invalid credentials') {

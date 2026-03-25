@@ -4,11 +4,11 @@ const orderService = require('../orders/orderService');
 
 const processPaymentIntent = async (orderId, userId, userRole) => {
   const order = await orderService.getOrderById(orderId);
-  
+
   if (!order) {
     throw new Error('Order not found');
   }
-  
+
   if (order.buyerId !== userId && userRole !== 'ADMIN') {
     throw new Error('Forbidden: You do not own this order');
   }
@@ -18,10 +18,10 @@ const processPaymentIntent = async (orderId, userId, userRole) => {
   }
 
   // Orchestrate external payment logic here...
-  
+
   // Call internal sibling service to persist data!
   const updatedOrder = await orderService.updateOrderPaymentStatus(orderId, 'COMPLETED', 'PAID');
-  
+
   return updatedOrder;
 };
 

@@ -5,7 +5,7 @@ const logger = require('./src/utils/logger');
 
 const startServer = async () => {
   await connectDB();
-  
+
   app.listen(env.PORT, () => {
     logger.info(`Server is running on port ${env.PORT}`);
   });

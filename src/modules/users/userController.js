@@ -1,11 +1,8 @@
-const { prisma } = require('../../config/db');
+const userService = require('./userService');
 
 const getUserProfile = async (req, res, next) => {
   try {
-    const user = await prisma.user.findUnique({
-      where: { id: req.user.id },
-      select: { id: true, name: true, email: true, role: true, createdAt: true },
-    });
+    const user = await userService.getUserById(req.user.id);
 
     if (!user) {
       return res.status(404).json({ success: false, message: 'User not found' });

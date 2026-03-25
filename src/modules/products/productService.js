@@ -9,7 +9,7 @@ const createProduct = async (data) => {
 const getAllProducts = async () => {
   return prisma.product.findMany({
     include: {
-      seller: { select: { name: true, email: true } },
+      seller: { select: { firstName: true, companyName: true, email: true } },
     },
     orderBy: { createdAt: 'desc' },
   });
@@ -19,7 +19,7 @@ const getProductById = async (id) => {
   return prisma.product.findUnique({
     where: { id },
     include: {
-      seller: { select: { name: true, email: true } },
+      seller: { select: { firstName: true, companyName: true, email: true } },
     },
   });
 };

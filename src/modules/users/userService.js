@@ -3,7 +3,16 @@ const { prisma } = require('../../config/db');
 const getUserById = async (id) => {
   return prisma.user.findUnique({
     where: { id },
-    select: { id: true, name: true, email: true, role: true, createdAt: true },
+    select: {
+      id: true,
+      firstName: true,
+      lastName: true,
+      companyName: true,
+      email: true,
+      role: true,
+      gstNumber: true,
+      createdAt: true,
+    },
   });
 };
 

@@ -23,8 +23,8 @@ const getOrdersByUser = async (userId, isBuyer) => {
     where: whereClause,
     include: {
       product: { select: { title: true, price: true } },
-      buyer: { select: { name: true, email: true } },
-      seller: { select: { name: true, email: true } },
+      buyer: { select: { firstName: true, companyName: true, email: true } },
+      seller: { select: { firstName: true, companyName: true, email: true } },
     },
     orderBy: { createdAt: 'desc' },
   });

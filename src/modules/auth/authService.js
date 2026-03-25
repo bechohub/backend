@@ -4,17 +4,7 @@ const env = require('../../config/env');
 const userService = require('../users/userService'); // Cross-module boundary!
 
 const registerUser = async (data) => {
-  const {
-    email,
-    password,
-    firstName,
-    lastName,
-    companyName,
-    role,
-    category,
-    businessScale,
-    gstNumber,
-  } = data;
+  const { name, email, password, role } = data;
 
   const existingUser = await userService.getUserByEmail(email);
   if (existingUser) {
@@ -24,22 +14,15 @@ const registerUser = async (data) => {
   const hashedPassword = await bcrypt.hash(password, 10);
 
   const newUser = await userService.createUser({
+    name,
     email,
     password: hashedPassword,
-    firstName,
-    lastName,
-    companyName,
     role: role || 'BUYER',
-    category,
-    businessScale,
-    gstNumber,
   });
 
   return {
     id: newUser.id,
-    firstName: newUser.firstName,
-    lastName: newUser.lastName,
-    companyName: newUser.companyName,
+    name: newUser.name,
     email: newUser.email,
     role: newUser.role,
   };
@@ -62,8 +45,7 @@ const loginUser = async (email, password) => {
     token,
     user: {
       id: user.id,
-      firstName: user.firstName,
-      lastName: user.lastName,
+      name: user.name,
       email: user.email,
       role: user.role,
     },

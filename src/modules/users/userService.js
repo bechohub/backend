@@ -1,29 +1,19 @@
 const { prisma } = require('../../config/db');
 
 const getUserById = async (id) => {
-  return prisma.user.findUnique({
+  return prisma.profile.findUnique({
     where: { id },
-    select: {
-      id: true,
-      firstName: true,
-      lastName: true,
-      companyName: true,
-      email: true,
-      role: true,
-      gstNumber: true,
-      createdAt: true,
-    },
   });
 };
 
 const getUserByEmail = async (email) => {
-  return prisma.user.findUnique({
+  return prisma.profile.findFirst({
     where: { email },
   });
 };
 
 const createUser = async (data) => {
-  return prisma.user.create({
+  return prisma.profile.create({
     data,
   });
 };

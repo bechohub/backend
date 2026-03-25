@@ -10,9 +10,11 @@ const createOrder = async (req, res, next) => {
     if (!product) {
       return res.status(404).json({ success: false, message: 'Product not found' });
     }
-    
+
     if (product.sellerId === req.user.id) {
-       return res.status(403).json({ success: false, message: 'Forbidden: You cannot buy your own product' });
+      return res
+        .status(403)
+        .json({ success: false, message: 'Forbidden: You cannot buy your own product' });
     }
 
     const totalPrice = product.price * quantity;

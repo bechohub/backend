@@ -6,8 +6,8 @@ const processPayment = async (req, res, next) => {
     const { orderId } = req.body;
 
     const updatedOrder = await paymentService.processPaymentIntent(
-      orderId, 
-      req.user.id, 
+      orderId,
+      req.user.id,
       req.user.role
     );
 
@@ -15,7 +15,9 @@ const processPayment = async (req, res, next) => {
     sendNotification(updatedOrder.sellerId, `Payment received for order ${updatedOrder.id}.`);
     sendNotification(updatedOrder.buyerId, `Payment successful for order ${updatedOrder.id}.`);
 
-    res.status(200).json({ success: true, message: 'Payment processed successfully', data: updatedOrder });
+    res
+      .status(200)
+      .json({ success: true, message: 'Payment processed successfully', data: updatedOrder });
   } catch (error) {
     if (error.message.includes('not found')) {
       return res.status(404).json({ success: false, message: error.message });

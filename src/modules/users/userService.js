@@ -7,6 +7,7 @@ const getUserById = async (id) => {
 };
 
 const getUserByEmail = async (email) => {
+  // Using findFirst because email is currently not marked @unique natively in Supabase
   return prisma.profile.findFirst({
     where: { email },
   });

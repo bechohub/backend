@@ -34,11 +34,11 @@ enum Role {
 }
 
 model Product {
-  id          String   @id @default(uuid())
+  id          String   @id @default(uuid()) @db.Uuid
   title       String
   description String
   price       Float
-  sellerId    String
+  sellerId    String   @db.Uuid
   seller      User     @relation(fields: [sellerId], references: [id])
   createdAt   DateTime @default(now())
 
@@ -46,14 +46,14 @@ model Product {
 }
 
 model Order {
-  id            String        @id @default(uuid())
-  productId     String
+  id            String        @id @default(uuid()) @db.Uuid
+  productId     String        @db.Uuid
   product       Product       @relation(fields: [productId], references: [id])
   quantity      Int           @default(1)
   totalPrice    Float
-  buyerId       String
+  buyerId       String        @db.Uuid
   buyer         User          @relation("BuyerOrders", fields: [buyerId], references: [id])
-  sellerId      String
+  sellerId      String        @db.Uuid
   seller        User          @relation("SellerOrders", fields: [sellerId], references: [id])
   status        OrderStatus   @default(PENDING)
   paymentStatus PaymentStatus @default(PENDING)

@@ -16,20 +16,44 @@ const registerUser = async (data) => {
     gstNumber,
   } = data;
 
+  const targetRole = role || 'BUYER';
   const existingUser = await userService.getUserByEmail(email);
+
   if (existingUser) {
-    throw new Error('User already exists');
+    // Check if the user already has this role
+    if (existingUser.roles.includes(targetRole)) {
+      throw new Error('User with this role already exists');
+    }
+
+    // Update existing user with the new role and potentially update other fields
+    const updatedRoles = [...existingUser.roles, targetRole];
+    const updatedUser = await userService.updateUser(existingUser.id, {
+      roles: updatedRoles,
+      // Update other fields if they are provided in the new signup
+      firstName: firstName || existingUser.firstName,
+      lastName: lastName || existingUser.lastName,
+      companyName: companyName || existingUser.companyName,
+      category: category || existingUser.category,
+      businessScale: businessScale || existingUser.businessScale,
+      gstNumber: gstNumber || existingUser.gstNumber,
+    });
+
+    return {
+      id: updatedUser.id,
+      email: updatedUser.email,
+      roles: updatedUser.roles,
+    };
   }
 
+  // Create new user if not exists
   const hashedPassword = await bcrypt.hash(password, 10);
-
   const newUser = await userService.createUser({
     email,
     password: hashedPassword,
     firstName,
     lastName,
     companyName,
-    role: role || 'BUYER',
+    roles: [targetRole],
     category,
     businessScale,
     gstNumber,
@@ -41,11 +65,11 @@ const registerUser = async (data) => {
     lastName: newUser.lastName,
     companyName: newUser.companyName,
     email: newUser.email,
-    role: newUser.role,
+    roles: newUser.roles,
   };
 };
 
-const loginUser = async (email, password) => {
+const loginUser = async (email, password, role) => {
   const user = await userService.getUserByEmail(email);
   if (!user) {
     throw new Error('Invalid credentials');
@@ -56,7 +80,23 @@ const loginUser = async (email, password) => {
     throw new Error('Invalid credentials');
   }
 
-  const token = jwt.sign({ id: user.id, role: user.role }, env.JWT_SECRET, { expiresIn: '1d' });
+  // If user has multiple roles and hasn't selected one yet
+  if (user.roles.length > 1 && !role) {
+    return {
+      needRoleSelection: true,
+      roles: user.roles,
+    };
+  }
+
+  // Determine active role (either the provided one or the only one available)
+  const activeRole = role || user.roles[0];
+
+  // Validate that the user actually has the selected role
+  if (!user.roles.includes(activeRole)) {
+    throw new Error('Invalid role selected');
+  }
+
+  const token = jwt.sign({ id: user.id, role: activeRole }, env.JWT_SECRET, { expiresIn: '1d' });
 
   return {
     token,
@@ -65,7 +105,8 @@ const loginUser = async (email, password) => {
       firstName: user.firstName,
       lastName: user.lastName,
       email: user.email,
-      role: user.role,
+      role: activeRole,
+      roles: user.roles,
     },
   };
 };

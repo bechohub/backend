@@ -14,7 +14,7 @@ model User {
   firstName     String?  @map("first_name")
   lastName      String?  @map("last_name")
   companyName   String?  @map("company_name")
-  role          Role     @default(BUYER)
+  roles         Role[]   @default([BUYER])
   category      String?
   businessScale String?  @map("business_scale")
   gstNumber     String?  @map("gst_number")

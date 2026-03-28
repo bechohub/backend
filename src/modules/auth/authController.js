@@ -14,10 +14,10 @@ const register = async (req, res, next) => {
 
 const login = async (req, res, next) => {
   try {
-    const { email, password } = req.body;
-    const { token, user } = await authService.loginUser(email, password);
+    const { email, password, role } = req.body;
+    const result = await authService.loginUser(email, password, role);
 
-    res.status(200).json({ success: true, token, data: user });
+    res.status(200).json({ success: true, ...result });
   } catch (error) {
     if (error.message === 'Invalid credentials') {
       return res.status(401).json({ success: false, message: error.message });

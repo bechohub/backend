@@ -1,22 +1,38 @@
 const { prisma } = require('../../config/db');
 
 const getUserById = async (id) => {
-  return prisma.profile.findUnique({
+  return prisma.user.findUnique({
     where: { id },
+    select: {
+      id: true,
+      firstName: true,
+      lastName: true,
+      companyName: true,
+      email: true,
+      roles: true,
+      gstNumber: true,
+      createdAt: true,
+    },
   });
 };
 
 const getUserByEmail = async (email) => {
-  // Using findFirst because email is currently not marked @unique natively in Supabase
-  return prisma.profile.findFirst({
+  return prisma.user.findFirst({
     where: { email },
   });
 };
 
 const createUser = async (data) => {
-  return prisma.profile.create({
+  return prisma.user.create({
     data,
   });
 };
 
-module.exports = { getUserById, getUserByEmail, createUser };
+const updateUser = async (id, data) => {
+  return prisma.user.update({
+    where: { id },
+    data,
+  });
+};
+
+module.exports = { getUserById, getUserByEmail, createUser, updateUser };

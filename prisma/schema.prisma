@@ -7,18 +7,66 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
-model Profile {
+model User {
   id            String   @id @default(uuid()) @db.Uuid
-  email         String?
+  email         String   @unique
+  password      String
   firstName     String?  @map("first_name")
   lastName      String?  @map("last_name")
   companyName   String?  @map("company_name")
-  createdAt     DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  roles         Role[]   @default([BUYER])
   category      String?
   businessScale String?  @map("business_scale")
   gstNumber     String?  @map("gst_number")
-  password      String?
-  role          String?
+  createdAt     DateTime @default(now()) @map("created_at")
+
+  products     Product[]
+  buyerOrders  Order[]   @relation("BuyerOrders")
+  sellerOrders Order[]   @relation("SellerOrders")
 
   @@map("profiles")
+}
+
+enum Role {
+  BUYER
+  SELLER
+  ADMIN
+}
+
+model Product {
+  id          String   @id @default(uuid())
+  title       String
+  description String
+  price       Float
+  sellerId    String
+  seller      User     @relation(fields: [sellerId], references: [id])
+  createdAt   DateTime @default(now())
+
+  orders Order[]
+}
+
+model Order {
+  id            String        @id @default(uuid())
+  productId     String
+  product       Product       @relation(fields: [productId], references: [id])
+  quantity      Int           @default(1)
+  totalPrice    Float
+  buyerId       String
+  buyer         User          @relation("BuyerOrders", fields: [buyerId], references: [id])
+  sellerId      String
+  seller        User          @relation("SellerOrders", fields: [sellerId], references: [id])
+  status        OrderStatus   @default(PENDING)
+  paymentStatus PaymentStatus @default(PENDING)
+  createdAt     DateTime      @default(now())
+}
+
+enum OrderStatus {
+  PENDING
+  COMPLETED
+  CANCELLED
+}
+
+enum PaymentStatus {
+  PENDING
+  PAID
 }

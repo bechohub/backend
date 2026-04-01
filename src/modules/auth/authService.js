@@ -5,13 +5,16 @@ const userService = require('../users/userService');
 
 const registerUser = async (data) => {
   const { 
-    email, password, firstName, lastName, 
+    email, password, name, firstName, lastName, 
     companyName, category, businessScale, gstNumber, role 
   } = data;
 
   if (!email || !password) {
     throw new Error('Email and password are required');
   }
+
+  const finalFirstName = firstName || (name ? name.split(' ')[0] : undefined);
+  const finalLastName = lastName || (name ? name.split(' ').slice(1).join(' ') : undefined);
 
   const targetRole = role || 'BUYER';
   const existingUser = await userService.getUserByEmail(email);
@@ -24,8 +27,8 @@ const registerUser = async (data) => {
     const updatedRoles = [...existingUser.roles, targetRole];
     const updatedUser = await userService.updateUser(existingUser.id, {
       roles: updatedRoles,
-      firstName: firstName || existingUser.firstName,
-      lastName: lastName || existingUser.lastName,
+      firstName: finalFirstName || existingUser.firstName,
+      lastName: finalLastName || existingUser.lastName,
       companyName: companyName || existingUser.companyName,
       category: category || existingUser.category,
       businessScale: businessScale || existingUser.businessScale,
@@ -43,8 +46,8 @@ const registerUser = async (data) => {
   const newUser = await userService.createUser({
     email,
     password: hashedPassword,
-    firstName,
-    lastName,
+    firstName: finalFirstName,
+    lastName: finalLastName,
     companyName,
     roles: [targetRole],
     category,

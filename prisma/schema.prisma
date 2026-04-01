@@ -34,7 +34,7 @@ model Product {
   sellerId    String   @db.Uuid
   createdAt   DateTime @default(now())
   orders      Order[]
-  seller      User     @relation(fields: [sellerId], references: [id])
+  seller      User     @relation(fields: [sellerId], references: [id], onDelete: Cascade)
 }
 
 model Order {
@@ -47,9 +47,9 @@ model Order {
   status        OrderStatus   @default(PENDING)
   paymentStatus PaymentStatus @default(PENDING)
   createdAt     DateTime      @default(now())
-  buyer         User          @relation("BuyerOrders", fields: [buyerId], references: [id])
-  product       Product       @relation(fields: [productId], references: [id])
-  seller        User          @relation("SellerOrders", fields: [sellerId], references: [id])
+  buyer         User          @relation("BuyerOrders", fields: [buyerId], references: [id], onDelete: Cascade)
+  product       Product       @relation(fields: [productId], references: [id], onDelete: Cascade)
+  seller        User          @relation("SellerOrders", fields: [sellerId], references: [id], onDelete: Cascade)
 }
 
 enum Role {

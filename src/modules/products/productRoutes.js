@@ -5,6 +5,8 @@ const { authenticate, authorize } = require('../../middleware/authMiddleware');
 const router = express.Router();
 
 // Public Routes
+router.get('/featured', productController.getFeaturedProducts);
+router.get('/search', productController.searchProducts);
 router.get('/', productController.getAllProducts);
 router.get('/:id', productController.getProductById);
 

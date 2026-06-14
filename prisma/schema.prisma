@@ -31,6 +31,7 @@ model Product {
   title       String
   description String
   price       Float
+  featured    Boolean  @default(false)
   sellerId    String   @db.Uuid
   createdAt   DateTime @default(now())
   orders      Order[]

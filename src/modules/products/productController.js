@@ -2,11 +2,16 @@ const productService = require('./productService');
 
 const createProduct = async (req, res, next) => {
   try {
-    const { title, description, price } = req.body;
+    const { title, description, price, featured } = req.body;
     const sellerId = req.user.id;
 
     const product = await productService.createProduct(
-      { title, description, price: parseFloat(price) },
+      {
+        title,
+        description,
+        price: parseFloat(price),
+        featured: featured !== undefined ? (featured === 'true' || featured === true) : undefined
+      },
       sellerId
     );
 
@@ -49,6 +54,9 @@ const updateProduct = async (req, res, next) => {
     const updateData = req.body;
 
     if (updateData.price) updateData.price = parseFloat(updateData.price);
+    if (updateData.featured !== undefined) {
+      updateData.featured = updateData.featured === 'true' || updateData.featured === true;
+    }
 
     const updatedProduct = await productService.updateProduct(
       id,
@@ -76,10 +84,37 @@ const deleteProduct = async (req, res, next) => {
   }
 };
 
+const getFeaturedProducts = async (req, res, next) => {
+  try {
+    const products = await productService.getFeaturedProducts();
+    res.status(200).json({ success: true, data: products });
+  } catch (error) {
+    next(error);
+  }
+};
+
+const searchProducts = async (req, res, next) => {
+  try {
+    const { q } = req.query;
+    if (!q) {
+      return res
+        .status(400)
+        .json({ success: false, message: 'Search query parameter "q" is required.' });
+    }
+
+    const products = await productService.searchProducts(q);
+    res.status(200).json({ success: true, data: products });
+  } catch (error) {
+    next(error);
+  }
+};
+
 module.exports = {
   createProduct,
   getAllProducts,
   getProductById,
   updateProduct,
   deleteProduct,
+  getFeaturedProducts,
+  searchProducts,
 };

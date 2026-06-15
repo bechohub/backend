@@ -9,7 +9,7 @@ const getUserById = async (id) => {
       lastName: true,
       companyName: true,
       email: true,
-      role: true,
+      roles: true,
       gstNumber: true,
       createdAt: true,
     },
@@ -17,7 +17,7 @@ const getUserById = async (id) => {
 };
 
 const getUserByEmail = async (email) => {
-  return prisma.user.findUnique({
+  return prisma.user.findFirst({
     where: { email },
   });
 };
@@ -28,4 +28,11 @@ const createUser = async (data) => {
   });
 };
 
-module.exports = { getUserById, getUserByEmail, createUser };
+const updateUser = async (id, data) => {
+  return prisma.user.update({
+    where: { id },
+    data,
+  });
+};
+
+module.exports = { getUserById, getUserByEmail, createUser, updateUser };

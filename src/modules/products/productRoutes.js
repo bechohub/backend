@@ -1,14 +1,35 @@
 const express = require('express');
+const productController = require('./productController');
 const { authenticate, authorize } = require('../../middleware/authMiddleware');
-const { createProduct, getAllProducts, getProductById } = require('./productController');
 
 const router = express.Router();
 
-// Public routes
-router.get('/', getAllProducts);
-router.get('/:id', getProductById);
+// Public Routes
+router.get('/featured', productController.getFeaturedProducts);
+router.get('/search', productController.searchProducts);
+router.get('/', productController.getAllProducts);
+router.get('/:id', productController.getProductById);
 
-// Protected routes (Only Sellers can create products)
-router.post('/', authenticate, authorize('SELLER', 'ADMIN'), createProduct);
+// Protected Routes (Sellers only)
+router.post(
+  '/',
+  authenticate,
+  authorize('SELLER'),
+  productController.createProduct
+);
+
+router.patch(
+  '/:id',
+  authenticate,
+  authorize('SELLER'),
+  productController.updateProduct
+);
+
+router.delete(
+  '/:id',
+  authenticate,
+  authorize('SELLER'),
+  productController.deleteProduct
+);
 
 module.exports = router;

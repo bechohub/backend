@@ -5,7 +5,7 @@ const register = async (req, res, next) => {
     const user = await authService.registerUser(req.body);
     res.status(201).json({ success: true, data: user });
   } catch (error) {
-    if (error.message === 'User already exists') {
+    if (error.message === 'User already exists' || error.message === 'Email and password are required' || error.message === 'User with this role already exists') {
       return res.status(400).json({ success: false, message: error.message });
     }
     next(error);
@@ -14,12 +14,12 @@ const register = async (req, res, next) => {
 
 const login = async (req, res, next) => {
   try {
-    const { email, password } = req.body;
-    const { token, user } = await authService.loginUser(email, password);
+    const { email, password, role } = req.body;
+    const result = await authService.loginUser(email, password, role);
 
-    res.status(200).json({ success: true, token, data: user });
+    res.status(200).json({ success: true, ...result });
   } catch (error) {
-    if (error.message === 'Invalid credentials') {
+    if (error.message === 'Invalid credentials' || error.message === 'Email and password are required' || error.message === 'Invalid role selected') {
       return res.status(401).json({ success: false, message: error.message });
     }
     next(error);

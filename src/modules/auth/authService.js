@@ -1,35 +1,55 @@
 const bcrypt = require('bcrypt');
 const jwt = require('jsonwebtoken');
 const env = require('../../config/env');
-const userService = require('../users/userService'); // Cross-module boundary!
+const userService = require('../users/userService');
 
 const registerUser = async (data) => {
-  const {
-    email,
-    password,
-    firstName,
-    lastName,
-    companyName,
-    role,
-    category,
-    businessScale,
-    gstNumber,
+  const { 
+    email, password, name, firstName, lastName, 
+    companyName, category, businessScale, gstNumber, role 
   } = data;
 
+  if (!email || !password) {
+    throw new Error('Email and password are required');
+  }
+
+  const finalFirstName = firstName || (name ? name.split(' ')[0] : undefined);
+  const finalLastName = lastName || (name ? name.split(' ').slice(1).join(' ') : undefined);
+
+  const targetRole = role || 'BUYER';
   const existingUser = await userService.getUserByEmail(email);
+
   if (existingUser) {
-    throw new Error('User already exists');
+    if (existingUser.roles.includes(targetRole)) {
+      throw new Error('User with this role already exists');
+    }
+
+    const updatedRoles = [...existingUser.roles, targetRole];
+    const updatedUser = await userService.updateUser(existingUser.id, {
+      roles: updatedRoles,
+      firstName: finalFirstName || existingUser.firstName,
+      lastName: finalLastName || existingUser.lastName,
+      companyName: companyName || existingUser.companyName,
+      category: category || existingUser.category,
+      businessScale: businessScale || existingUser.businessScale,
+      gstNumber: gstNumber || existingUser.gstNumber,
+    });
+
+    return {
+      id: updatedUser.id,
+      email: updatedUser.email,
+      roles: updatedUser.roles,
+    };
   }
 
   const hashedPassword = await bcrypt.hash(password, 10);
-
   const newUser = await userService.createUser({
     email,
     password: hashedPassword,
-    firstName,
-    lastName,
+    firstName: finalFirstName,
+    lastName: finalLastName,
     companyName,
-    role: role || 'BUYER',
+    roles: [targetRole],
     category,
     businessScale,
     gstNumber,
@@ -37,17 +57,18 @@ const registerUser = async (data) => {
 
   return {
     id: newUser.id,
-    firstName: newUser.firstName,
-    lastName: newUser.lastName,
-    companyName: newUser.companyName,
     email: newUser.email,
-    role: newUser.role,
+    roles: newUser.roles,
   };
 };
 
-const loginUser = async (email, password) => {
+const loginUser = async (email, password, role) => {
+  if (!email || !password) {
+    throw new Error('Email and password are required');
+  }
+
   const user = await userService.getUserByEmail(email);
-  if (!user) {
+  if (!user || !user.password) {
     throw new Error('Invalid credentials');
   }
 
@@ -56,16 +77,27 @@ const loginUser = async (email, password) => {
     throw new Error('Invalid credentials');
   }
 
-  const token = jwt.sign({ id: user.id, role: user.role }, env.JWT_SECRET, { expiresIn: '1d' });
+  if (user.roles.length > 1 && !role) {
+    return {
+      needRoleSelection: true,
+      roles: user.roles,
+    };
+  }
+
+  const activeRole = role || user.roles[0];
+  if (!user.roles.includes(activeRole)) {
+    throw new Error('Invalid role selected');
+  }
+
+  const token = jwt.sign({ id: user.id, role: activeRole }, env.JWT_SECRET, { expiresIn: '30d' });
 
   return {
     token,
     user: {
       id: user.id,
-      firstName: user.firstName,
-      lastName: user.lastName,
       email: user.email,
-      role: user.role,
+      role: activeRole,
+      roles: user.roles,
     },
   };
 };

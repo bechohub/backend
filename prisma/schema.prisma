@@ -8,56 +8,55 @@ datasource db {
 }
 
 model User {
-  id            String   @id @default(uuid()) @db.Uuid
-  email         String   @unique
+  id            String    @id @default(uuid()) @db.Uuid
+  email         String    @unique
   password      String
-  firstName     String?  @map("first_name")
-  lastName      String?  @map("last_name")
-  companyName   String?  @map("company_name")
-  role          Role     @default(BUYER)
+  firstName     String?   @map("first_name")
+  lastName      String?   @map("last_name")
+  companyName   String?   @map("company_name")
+  roles         Role[]    @default([BUYER])
   category      String?
-  businessScale String?  @map("business_scale")
-  gstNumber     String?  @map("gst_number")
-  createdAt     DateTime @default(now()) @map("created_at")
-
-  products     Product[]
-  buyerOrders  Order[]   @relation("BuyerOrders")
-  sellerOrders Order[]   @relation("SellerOrders")
+  businessScale String?   @map("business_scale")
+  gstNumber     String?   @map("gst_number")
+  createdAt     DateTime  @default(now()) @map("created_at")
+  buyerOrders   Order[]   @relation("BuyerOrders")
+  sellerOrders  Order[]   @relation("SellerOrders")
+  products      Product[]
 
   @@map("profiles")
+}
+
+model Product {
+  id          String   @id @default(uuid()) @db.Uuid
+  title       String
+  description String
+  price       Float
+  featured    Boolean  @default(false)
+  sellerId    String   @db.Uuid
+  createdAt   DateTime @default(now())
+  orders      Order[]
+  seller      User     @relation(fields: [sellerId], references: [id], onDelete: Cascade)
+}
+
+model Order {
+  id            String        @id @default(uuid()) @db.Uuid
+  productId     String        @db.Uuid
+  quantity      Int           @default(1)
+  totalPrice    Float
+  buyerId       String        @db.Uuid
+  sellerId      String        @db.Uuid
+  status        OrderStatus   @default(PENDING)
+  paymentStatus PaymentStatus @default(PENDING)
+  createdAt     DateTime      @default(now())
+  buyer         User          @relation("BuyerOrders", fields: [buyerId], references: [id], onDelete: Cascade)
+  product       Product       @relation(fields: [productId], references: [id], onDelete: Cascade)
+  seller        User          @relation("SellerOrders", fields: [sellerId], references: [id], onDelete: Cascade)
 }
 
 enum Role {
   BUYER
   SELLER
   ADMIN
-}
-
-model Product {
-  id          String   @id @default(uuid())
-  title       String
-  description String
-  price       Float
-  sellerId    String
-  seller      User     @relation(fields: [sellerId], references: [id])
-  createdAt   DateTime @default(now())
-
-  orders Order[]
-}
-
-model Order {
-  id            String        @id @default(uuid())
-  productId     String
-  product       Product       @relation(fields: [productId], references: [id])
-  quantity      Int           @default(1)
-  totalPrice    Float
-  buyerId       String
-  buyer         User          @relation("BuyerOrders", fields: [buyerId], references: [id])
-  sellerId      String
-  seller        User          @relation("SellerOrders", fields: [sellerId], references: [id])
-  status        OrderStatus   @default(PENDING)
-  paymentStatus PaymentStatus @default(PENDING)
-  createdAt     DateTime      @default(now())
 }
 
 enum OrderStatus {

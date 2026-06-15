@@ -4,7 +4,7 @@ const { connectDB } = require('./src/config/db');
 const logger = require('./src/utils/logger');
 
 const startServer = async () => {
-  await connectDB();
+//   await connectDB();
 
   app.listen(env.PORT, () => {
     logger.info(`Server is running on port ${env.PORT}`);

@@ -1,82 +1,174 @@
 # BechoHub Backend
 
-The robust, scalable, and secure backend engine powering the **BechoHub.com B2B Marketplace**. This backend is designed using Domain-Driven Design (DDD) principles to seamlessly connect **Buyers** and **Sellers**, manage **Products**, and process **Orders** safely.
+Backend API for BechoHub, built with Node.js, Express, Prisma, and PostgreSQL.
 
-## 🚀 Tech Stack
+This README documents the current implementation in this repository.
 
-- **Runtime Environment:** [Node.js](https://nodejs.org/)
-- **API Framework:** [Express.js](https://expressjs.com/) (v5)
-- **Database ORM:** [Prisma](https://www.prisma.io/)
-- **Database Engine:** PostgreSQL
-- **Authentication:** JSON Web Tokens (JWT) & bcrypt
+## Tech Stack
 
-## 📁 Project Architecture
+- Runtime: Node.js
+- Framework: Express 5
+- ORM: Prisma
+- Database: PostgreSQL
+- Auth: JWT + bcrypt
+- Validation: Zod
+- Logging: Winston
 
-The codebase handles operations in heavily isolated Domain Modules located in `src/modules/`:
+## System Architecture
 
-- **Auth** (`/api/auth`): Secure registration and stateless JWT login.
-- **Users** (`/api/users`): Profile fetching and role management (`BUYER`, `SELLER`, `ADMIN`).
-- **Products** (`/api/products`): Seller product listings and catalog queries.
-- **Orders** (`/api/orders`): Transacting Buyer intentions into finalized marketplace orders.
-- **Payments** (`/api/payments`): Validating payments and finalizing order lifecycle statuses.
+```mermaid
+flowchart TD
+		Client[Client Apps]
+		App[Express App app.js]
+		Routes[API Router src/routes/index.js]
+		AuthM[Auth Middleware authenticate/authorize]
+		Validate[Validation Middleware Zod]
+		Controllers[Domain Controllers]
+		Services[Domain Services]
+		Prisma[Prisma Client src/config/db.js]
+		DB[(PostgreSQL)]
+		Err[Global Error Handler]
 
-## ⚙️ Local Development Setup
+		Client --> App
+		App --> Routes
+		Routes --> Validate
+		Routes --> AuthM
+		Validate --> Controllers
+		AuthM --> Controllers
+		Controllers --> Services
+		Services --> Prisma
+		Prisma --> DB
+		Controllers --> Err
+		Services --> Err
+```
 
-Follow these instructions to run the BechoHub backend on your local machine.
+## Runtime Flow
 
-### 1. Install Dependencies
+1. Request enters `app.js` with CORS and JSON body parsing enabled.
+2. Request logging middleware writes request method and URL through Winston.
+3. Request is routed under `/api` to module routes (`auth`, `users`, `products`).
+4. Route-level middleware applies validation (where configured) and auth/role checks.
+5. Controller handles request/response orchestration.
+6. Service layer executes business logic and Prisma DB operations.
+7. Errors bubble into global `errorHandler` and return normalized JSON error responses.
+
+## Project Structure
+
+```text
+src/
+	config/
+		env.js                # env var loading
+		db.js                 # Prisma client and DB connection helper
+	middleware/
+		authMiddleware.js     # JWT auth + RBAC authorize(...roles)
+		errorHandler.js       # global error handler
+		validate.js           # Zod request validation middleware
+	modules/
+		auth/
+			authRoutes.js
+			authController.js
+			authService.js
+			authSchema.js
+		users/
+			userRoutes.js
+			userController.js
+			userService.js
+		products/
+			productRoutes.js
+			productController.js
+			productService.js
+			productSchema.js
+	routes/
+		index.js              # mounts auth/users/products module routes
+	utils/
+		logger.js             # Winston logger
+prisma/
+	schema.prisma           # User, Product, Order models + enums
+server.js                 # main startup entry point
+app.js                    # express app definition
+```
+
+## Implemented API Surface
+
+Base path: `/api`
+
+- Auth
+	- `POST /auth/register` (validated with Zod)
+	- `POST /auth/login` (validated with Zod)
+- Users
+	- `GET /users/profile` (JWT required)
+- Products
+	- `GET /products`
+	- `GET /products/:id`
+	- `POST /products` (JWT + `SELLER` role)
+	- `PATCH /products/:id` (JWT + `SELLER` role)
+	- `DELETE /products/:id` (JWT + `SELLER` role)
+
+Notes:
+- Prisma schema includes `Order`, but order/payment API routes are not currently mounted in `src/routes/index.js`.
+- `server.js` is the active application entry point for npm scripts.
+
+## What PostHog Does
+
+PostHog is a product analytics platform commonly used for:
+
+- Event tracking (for example: signup completed, product viewed, order placed)
+- Funnel and conversion analysis
+- Feature flags and experiments (A/B testing)
+- Session replay and user behavior insights
+
+In a backend like this, PostHog is usually used to send server-side events after key actions, such as:
+
+- successful registration/login
+- product creation/update/delete
+- checkout/order status transitions
+
+Important for this repository:
+- There is currently no PostHog package or PostHog code integrated in this codebase.
+- No `posthog`/`posthog-node` dependency is present in `package.json`.
+- No analytics tracking calls were found in source files.
+
+## Environment Variables
+
+Create a `.env` file in the project root:
+
+```env
+PORT=3000
+DATABASE_URL="postgresql://user:password@localhost:5432/bechohub_db"
+JWT_SECRET="your_super_secret_jwt_key_here"
+NODE_ENV="development"
+```
+
+## Local Setup
+
+1. Install dependencies
+
 ```bash
 npm install
 ```
 
-### 2. Configure Environment Variables
-Create a `.env` file in the root of the project with the following variables:
-```env
-# Server Port
-PORT=3000
+2. Generate Prisma client and run migrations
 
-# JSON Web Token Secret
-JWT_SECRET="your_super_secret_jwt_key_here"
-
-# Your Local or Cloud PostgreSQL Database URL
-DATABASE_URL="postgresql://user:password@localhost:5432/bechohub_db"
-```
-
-### 3. Deploy Database Architecture
-Push the Prisma schemas to your PostgreSQL server to generate the required tables.
 ```bash
-npx prisma format
-npx prisma migrate dev --name init_b2b_products
+npx prisma generate
+npx prisma migrate dev --name init
 ```
 
-### 4. Start the Server
-To begin local development with auto-reload (via `nodemon`):
+3. Run the API
+
 ```bash
 npm run dev
 ```
-For production:
+
+Production:
+
 ```bash
 npm start
 ```
 
-## 🔐 Security Features
+## Security and Validation
 
-- **Role-Based Access Control (RBAC):** Every endpoint validates the JWT token safely. For example, `POST /api/products` is heavily restricted to users holding a `SELLER` or `ADMIN` token.
-- **Encrypted Payloads:** Passwords are encrypted utilizing `bcrypt` with a strong salt rounds configuration.
-- **Decoupled API Routing:** The internal Express routing maps dynamically across domains to ensure zero crossover data bleeding.
-
-## 🛳 API Endpoints Guide
-
-| Domain  | Method | Endpoint | Access |
-|---------|--------|----------|--------|
-| Auth | `POST` | `/api/auth/register` | Public |
-| Auth | `POST` | `/api/auth/login` | Public |
-| Users | `GET` | `/api/users/profile` | Authenticated |
-| Products | `GET` | `/api/products/` | Public |
-| Products | `POST` | `/api/products/` | `SELLER` / `ADMIN` |
-| Orders | `POST` | `/api/orders/` | `BUYER` / `ADMIN` |
-| Orders | `GET` | `/api/orders/` | Authenticated |
-| Payments | `POST` | `/api/payments/` | `BUYER` / `ADMIN` |
-
----
-**Maintained by the BechoHub Development Team.**
+- Passwords are hashed with bcrypt.
+- JWT token contains `id` and active `role`.
+- RBAC is enforced via `authorize(...roles)` middleware.
+- Request payload validation is implemented via Zod (currently in auth routes).

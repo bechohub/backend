@@ -1,223 +1,168 @@
-const { prisma } = require('../../config/db');
+const crypto = require('crypto');
+const productRepository = require('./productRepository');
+const sellerService = require('../sellers/sellerService');
+const { uploadProductImage, removeProductImage } = require('../../utils/storage');
 
-/**
- * Create a new product
- * @param {Object} productData - { title, description, price }
- * @param {string} sellerId - UUID of the seller (from Auth token)
- */
-const createProduct = async (productData, sellerId) => {
-  return await prisma.product.create({
-    data: {
-      ...productData,
-      sellerId,
-    },
+const mapProduct = (product) => {
+  if (!product) {
+    return product;
+  }
+
+  return {
+    ...product,
+    price: Number(product.price),
+  };
+};
+
+const ensureSellerProfile = async (user) => {
+  const seller = await sellerService.getSellerByUserId(user.id);
+  if (seller) {
+    return seller;
+  }
+
+  return sellerService.upsertSellerFromUser(user, {
+    businessName: user.companyName || [user.firstName, user.lastName].filter(Boolean).join(' ') || user.email,
+    displayName: user.companyName || [user.firstName, user.lastName].filter(Boolean).join(' ') || user.email,
+    contactEmail: user.email,
   });
 };
 
-/**
- * Get all products
- * @param {Object} filters - Optional searching and filtering logic
- */
-const getAllProducts = async (filters = {}) => {
-  return await prisma.product.findMany({
-    include: {
-      seller: {
-        select: {
-          id: true,
-          firstName: true,
-          lastName: true,
-          companyName: true,
-        },
-      },
-    },
-    orderBy: {
-      createdAt: 'desc',
-    },
-  });
+const createProduct = async ({ sellerUser, productData, files }) => {
+  const seller = await ensureSellerProfile(sellerUser);
+  const productId = crypto.randomUUID();
+
+  if (!files || files.length === 0) {
+    const error = new Error('At least one product image is required');
+    error.statusCode = 400;
+    throw error;
+  }
+
+  const uploadedImages = [];
+  for (const [index, file] of files.entries()) {
+    if (!file.mimetype.startsWith('image/')) {
+      const error = new Error('Only image files are allowed');
+      error.statusCode = 400;
+      throw error;
+    }
+
+    uploadedImages.push(await uploadProductImage({
+      sellerId: seller.id,
+      productId,
+      image: { base64: file.buffer.toString('base64') },
+      sortOrder: index,
+    }));
+  }
+
+  const product = await productRepository.createProductWithImages({
+    id: productId,
+    sellerId: seller.id,
+    productName: productData.productName,
+    quantity: productData.quantity,
+    price: productData.price,
+    location: productData.location,
+    description: productData.description || null,
+  }, uploadedImages);
+
+  return mapProduct(product);
 };
 
-/**
- * Get product by ID
- * @param {string} id - Product UUID
- */
+const listProducts = async (query) => {
+  const pagination = productRepository.normalizePagination(query);
+  const where = productRepository.buildWhere(query);
+  const orderBy = productRepository.buildOrderBy(query);
+
+  const [total, products] = await Promise.all([
+    productRepository.countProducts(where),
+    query.q
+      ? productRepository.searchProducts({ query: query.q, where, skip: pagination.skip, take: pagination.limit })
+      : productRepository.listProducts({ where, orderBy, skip: pagination.skip, take: pagination.limit }),
+  ]);
+
+  const resolvedProducts = Array.isArray(products) ? products : products.items;
+  const resolvedTotal = Array.isArray(products) ? total : products.total;
+
+  return {
+    data: resolvedProducts.map(mapProduct),
+    pagination: {
+      page: pagination.page,
+      limit: pagination.limit,
+      total: resolvedTotal,
+      totalPages: Math.max(1, Math.ceil(resolvedTotal / pagination.limit)),
+    },
+  };
+};
+
 const getProductById = async (id) => {
-  return await prisma.product.findUnique({
-    where: { id },
-    include: {
-      seller: {
-        select: {
-          id: true,
-          firstName: true,
-          lastName: true,
-          companyName: true,
-        },
-      },
-    },
-  });
+  const product = await productRepository.getProductById(id);
+  return mapProduct(product);
 };
 
-/**
- * Update a product (only by owner)
- * @param {string} id - Product UUID
- * @param {string} sellerId - UUID of the seller to verify ownership
- * @param {Object} updateData - Modified product fields
- */
-const updateProduct = async (id, sellerId, updateData) => {
-  const product = await prisma.product.findUnique({ where: { id } });
+const getSellerProducts = async (sellerId, query) => {
+  const pagination = productRepository.normalizePagination(query);
+  const orderBy = productRepository.buildOrderBy(query);
 
-  if (!product || product.sellerId !== sellerId) {
-    throw new Error('Not authorized to update this product.');
-  }
+  const [total, products] = await Promise.all([
+    productRepository.countProducts({ sellerId }),
+    productRepository.listSellerProducts({ sellerId, orderBy, skip: pagination.skip, take: pagination.limit }),
+  ]);
 
-  return await prisma.product.update({
-    where: { id },
-    data: updateData,
-  });
+  return {
+    data: products.map(mapProduct),
+    pagination: {
+      page: pagination.page,
+      limit: pagination.limit,
+      total,
+      totalPages: Math.max(1, Math.ceil(total / pagination.limit)),
+    },
+  };
 };
 
-/**
- * Delete a product (only by owner)
- * @param {string} id - Product UUID
- * @param {string} sellerId - UUID of the seller to verify ownership
- */
-const deleteProduct = async (id, sellerId) => {
-  const product = await prisma.product.findUnique({ where: { id } });
-
-  if (!product || product.sellerId !== sellerId) {
-    throw new Error('Not authorized to delete this product.');
+const updateProduct = async ({ productId, sellerUserId, patch }) => {
+  const seller = await sellerService.getSellerByUserId(sellerUserId);
+  if (!seller) {
+    const error = new Error('Seller profile not found');
+    error.statusCode = 404;
+    throw error;
   }
 
-  return await prisma.product.delete({
-    where: { id },
-  });
+  const product = await productRepository.getProductById(productId);
+  if (!product || product.sellerId !== seller.id) {
+    const error = new Error('Not authorized to update this product');
+    error.statusCode = 403;
+    throw error;
+  }
+
+  return mapProduct(await productRepository.updateProduct(productId, patch));
 };
 
-/**
- * Get featured products
- * Fallbacks to top 10 most recent products if no products are marked as featured.
- */
-const getFeaturedProducts = async () => {
-  let products = await prisma.product.findMany({
-    where: { featured: true },
-    include: {
-      seller: {
-        select: {
-          id: true,
-          firstName: true,
-          lastName: true,
-          companyName: true,
-        },
-      },
-    },
-    orderBy: {
-      createdAt: 'desc',
-    },
-  });
-
-  if (products.length === 0) {
-    // Fallback: load 10 most recent products
-    products = await prisma.product.findMany({
-      take: 10,
-      include: {
-        seller: {
-          select: {
-            id: true,
-            firstName: true,
-            lastName: true,
-            companyName: true,
-          },
-        },
-      },
-      orderBy: {
-        createdAt: 'desc',
-      },
-    });
+const deleteProduct = async ({ productId, sellerUserId }) => {
+  const seller = await sellerService.getSellerByUserId(sellerUserId);
+  if (!seller) {
+    const error = new Error('Seller profile not found');
+    error.statusCode = 404;
+    throw error;
   }
 
-  return products;
-};
-
-/**
- * Search products with PostgreSQL full-text search and ranking.
- * Supports prefix matching for autocomplete / instant typing search.
- * @param {string} q - The search query term.
- */
-const searchProducts = async (q) => {
-  if (!q || typeof q !== 'string') {
-    return [];
+  const product = await productRepository.getProductById(productId);
+  if (!product || product.sellerId !== seller.id) {
+    const error = new Error('Not authorized to delete this product');
+    error.statusCode = 403;
+    throw error;
   }
 
-  const cleanQuery = q.replace(/[^\w\s]/g, ' ').trim();
-  if (!cleanQuery) {
-    return [];
+  for (const image of product.images) {
+    await removeProductImage(image.storagePath).catch(() => null);
   }
 
-  let rankedProducts = [];
-  try {
-    const words = cleanQuery.split(/\s+/).filter(Boolean);
-    const tsQuery = words.map(w => `${w}:*`).join(' & ');
-
-    rankedProducts = await prisma.$queryRaw`
-      SELECT id,
-             ts_rank_cd(
-               to_tsvector('english', coalesce(title, '') || ' ' || coalesce(description, '')),
-               to_tsquery('english', ${tsQuery})
-             ) AS rank
-      FROM "Product"
-      WHERE to_tsvector('english', coalesce(title, '') || ' ' || coalesce(description, '')) @@ to_tsquery('english', ${tsQuery})
-      ORDER BY rank DESC;
-    `;
-  } catch (error) {
-    const logger = require('../../utils/logger');
-    logger.error('FTS search failed, falling back to ILIKE search:', error);
-
-    const fallbackProducts = await prisma.product.findMany({
-      where: {
-        OR: [
-          { title: { contains: q, mode: 'insensitive' } },
-          { description: { contains: q, mode: 'insensitive' } },
-        ],
-      },
-      select: { id: true },
-    });
-
-    rankedProducts = fallbackProducts.map((p) => ({ id: p.id, rank: 1.0 }));
-  }
-
-  if (rankedProducts.length === 0) {
-    return [];
-  }
-
-  const ids = rankedProducts.map((p) => p.id);
-
-  // Fetch full products including seller details
-  const products = await prisma.product.findMany({
-    where: { id: { in: ids } },
-    include: {
-      seller: {
-        select: {
-          id: true,
-          firstName: true,
-          lastName: true,
-          companyName: true,
-        },
-      },
-    },
-  });
-
-  // Re-sort the products to match the PostgreSQL ts_rank order
-  const idToIndex = new Map(ids.map((id, index) => [id, index]));
-  products.sort((a, b) => idToIndex.get(a.id) - idToIndex.get(b.id));
-
-  return products;
+  await productRepository.deleteProduct(productId);
+  return true;
 };
 
 module.exports = {
   createProduct,
-  getAllProducts,
+  listProducts,
   getProductById,
+  getSellerProducts,
   updateProduct,
   deleteProduct,
-  getFeaturedProducts,
-  searchProducts,
 };

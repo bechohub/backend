@@ -9,22 +9,18 @@ const { ZodError } = require('zod');
 const validate = (schema, property = 'body') => {
   return (req, res, next) => {
     try {
-      // Validate the property (body, query, or params)
       const validatedData = schema.parse(req[property]);
-      
-      // Replace the original property with the cleaned/validated data
       req[property] = validatedData;
-      
       next();
     } catch (error) {
       if (error instanceof ZodError) {
         return res.status(400).json({
           status: 'error',
           message: 'Validation failed',
-          errors: error.errors.map(err => ({
+          errors: error.issues.map((err) => ({
             field: err.path.join('.'),
-            message: err.message
-          }))
+            message: err.message,
+          })),
         });
       }
       next(error);

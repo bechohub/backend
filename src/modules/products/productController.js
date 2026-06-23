@@ -2,18 +2,11 @@ const productService = require('./productService');
 
 const createProduct = async (req, res, next) => {
   try {
-    const { title, description, price, featured } = req.body;
-    const sellerId = req.user.id;
-
-    const product = await productService.createProduct(
-      {
-        title,
-        description,
-        price: parseFloat(price),
-        featured: featured !== undefined ? (featured === 'true' || featured === true) : undefined
-      },
-      sellerId
-    );
+    const product = await productService.createProduct({
+      sellerUser: req.user,
+      productData: req.body,
+      files: req.files || [],
+    });
 
     res.status(201).json({ success: true, data: product });
   } catch (error) {
@@ -21,10 +14,10 @@ const createProduct = async (req, res, next) => {
   }
 };
 
-const getAllProducts = async (req, res, next) => {
+const listProducts = async (req, res, next) => {
   try {
-    const products = await productService.getAllProducts();
-    res.status(200).json({ success: true, data: products });
+    const result = await productService.listProducts(req.query);
+    res.status(200).json({ success: true, ...result });
   } catch (error) {
     next(error);
   }
@@ -32,13 +25,10 @@ const getAllProducts = async (req, res, next) => {
 
 const getProductById = async (req, res, next) => {
   try {
-    const { id } = req.params;
-    const product = await productService.getProductById(id);
+    const product = await productService.getProductById(req.params.id);
 
     if (!product) {
-      return res
-        .status(404)
-        .json({ success: false, message: 'Product not found' });
+      return res.status(404).json({ success: false, message: 'Product not found' });
     }
 
     res.status(200).json({ success: true, data: product });
@@ -47,24 +37,24 @@ const getProductById = async (req, res, next) => {
   }
 };
 
+const getSellerProducts = async (req, res, next) => {
+  try {
+    const result = await productService.getSellerProducts(req.params.sellerId, req.query);
+    res.status(200).json({ success: true, ...result });
+  } catch (error) {
+    next(error);
+  }
+};
+
 const updateProduct = async (req, res, next) => {
   try {
-    const { id } = req.params;
-    const sellerId = req.user.id;
-    const updateData = req.body;
+    const product = await productService.updateProduct({
+      productId: req.params.id,
+      sellerUserId: req.user.id,
+      patch: req.body,
+    });
 
-    if (updateData.price) updateData.price = parseFloat(updateData.price);
-    if (updateData.featured !== undefined) {
-      updateData.featured = updateData.featured === 'true' || updateData.featured === true;
-    }
-
-    const updatedProduct = await productService.updateProduct(
-      id,
-      sellerId,
-      updateData
-    );
-
-    res.status(200).json({ success: true, data: updatedProduct });
+    res.status(200).json({ success: true, data: product });
   } catch (error) {
     next(error);
   }
@@ -72,38 +62,12 @@ const updateProduct = async (req, res, next) => {
 
 const deleteProduct = async (req, res, next) => {
   try {
-    const { id } = req.params;
-    const sellerId = req.user.id;
+    await productService.deleteProduct({
+      productId: req.params.id,
+      sellerUserId: req.user.id,
+    });
 
-    await productService.deleteProduct(id, sellerId);
-    res
-      .status(200)
-      .json({ success: true, message: 'Product deleted successfully' });
-  } catch (error) {
-    next(error);
-  }
-};
-
-const getFeaturedProducts = async (req, res, next) => {
-  try {
-    const products = await productService.getFeaturedProducts();
-    res.status(200).json({ success: true, data: products });
-  } catch (error) {
-    next(error);
-  }
-};
-
-const searchProducts = async (req, res, next) => {
-  try {
-    const { q } = req.query;
-    if (!q) {
-      return res
-        .status(400)
-        .json({ success: false, message: 'Search query parameter "q" is required.' });
-    }
-
-    const products = await productService.searchProducts(q);
-    res.status(200).json({ success: true, data: products });
+    res.status(200).json({ success: true, message: 'Product deleted successfully' });
   } catch (error) {
     next(error);
   }
@@ -111,10 +75,9 @@ const searchProducts = async (req, res, next) => {
 
 module.exports = {
   createProduct,
-  getAllProducts,
+  listProducts,
   getProductById,
+  getSellerProducts,
   updateProduct,
   deleteProduct,
-  getFeaturedProducts,
-  searchProducts,
 };

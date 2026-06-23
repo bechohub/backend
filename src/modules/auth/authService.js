@@ -2,6 +2,7 @@ const bcrypt = require('bcrypt');
 const jwt = require('jsonwebtoken');
 const env = require('../../config/env');
 const userService = require('../users/userService');
+const sellerService = require('../sellers/sellerService');
 
 const registerUser = async (data) => {
   const { 
@@ -35,6 +36,14 @@ const registerUser = async (data) => {
       gstNumber: gstNumber || existingUser.gstNumber,
     });
 
+    if (targetRole === 'SELLER') {
+      await sellerService.upsertSellerFromUser(updatedUser, {
+        businessName: companyName || updatedUser.companyName || `${finalFirstName || ''} ${finalLastName || ''}`.trim() || email,
+        displayName: companyName || updatedUser.companyName || `${finalFirstName || ''} ${finalLastName || ''}`.trim() || email,
+        contactEmail: email,
+      });
+    }
+
     return {
       id: updatedUser.id,
       email: updatedUser.email,
@@ -54,6 +63,14 @@ const registerUser = async (data) => {
     businessScale,
     gstNumber,
   });
+
+  if (targetRole === 'SELLER') {
+    await sellerService.upsertSellerFromUser(newUser, {
+      businessName: companyName || `${finalFirstName || ''} ${finalLastName || ''}`.trim() || email,
+      displayName: companyName || `${finalFirstName || ''} ${finalLastName || ''}`.trim() || email,
+      contactEmail: email,
+    });
+  }
 
   return {
     id: newUser.id,

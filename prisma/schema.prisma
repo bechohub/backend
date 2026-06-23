@@ -21,21 +21,62 @@ model User {
   createdAt     DateTime  @default(now()) @map("created_at")
   buyerOrders   Order[]   @relation("BuyerOrders")
   sellerOrders  Order[]   @relation("SellerOrders")
-  products      Product[]
+  sellerProfile Seller?
 
   @@map("profiles")
 }
 
+model Seller {
+  id          String    @id @default(uuid()) @db.Uuid
+  userId      String    @unique @map("user_id") @db.Uuid
+  businessName String   @map("business_name")
+  displayName String?   @map("display_name")
+  contactEmail String?  @map("contact_email")
+  contactPhone String?  @map("contact_phone")
+  status      SellerStatus @default(ACTIVE)
+  createdAt   DateTime  @default(now()) @map("created_at")
+  updatedAt   DateTime  @updatedAt @map("updated_at")
+  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  products    Product[]
+
+  @@index([userId])
+  @@index([createdAt])
+  @@map("sellers")
+}
+
 model Product {
-  id          String   @id @default(uuid()) @db.Uuid
-  title       String
-  description String
-  price       Float
-  featured    Boolean  @default(false)
-  sellerId    String   @db.Uuid
-  createdAt   DateTime @default(now())
+  id          String          @id @default(uuid()) @db.Uuid
+  sellerId    String          @map("seller_id") @db.Uuid
+  productName String          @map("product_name")
+  quantity    Int
+  price       Decimal         @db.Decimal(12, 2)
+  location    String
+  description String?
+  searchVector Unsupported("tsvector")?
+  createdAt   DateTime        @default(now()) @map("created_at")
+  updatedAt   DateTime        @updatedAt @map("updated_at")
   orders      Order[]
-  seller      User     @relation(fields: [sellerId], references: [id], onDelete: Cascade)
+  seller      Seller          @relation(fields: [sellerId], references: [id], onDelete: Cascade)
+  images      ProductImage[]
+
+  @@index([sellerId])
+  @@index([productName])
+  @@index([location])
+  @@index([createdAt])
+  @@map("products")
+}
+
+model ProductImage {
+  id          String   @id @default(uuid()) @db.Uuid
+  productId   String   @map("product_id") @db.Uuid
+  imageUrl    String   @map("image_url")
+  storagePath String?  @map("storage_path")
+  sortOrder   Int      @default(0) @map("sort_order")
+  createdAt   DateTime @default(now()) @map("created_at")
+  product     Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  @@index([productId])
+  @@map("product_images")
 }
 
 model Order {
@@ -68,4 +109,9 @@ enum OrderStatus {
 enum PaymentStatus {
   PENDING
   PAID
+}
+
+enum SellerStatus {
+  ACTIVE
+  SUSPENDED
 }

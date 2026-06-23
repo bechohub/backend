@@ -12,6 +12,15 @@ const getUserById = async (id) => {
       roles: true,
       gstNumber: true,
       createdAt: true,
+      sellerProfile: {
+        select: {
+          id: true,
+          businessName: true,
+          displayName: true,
+          status: true,
+          createdAt: true,
+        },
+      },
     },
   });
 };

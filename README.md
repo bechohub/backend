@@ -6,13 +6,12 @@ This README documents the current implementation in this repository.
 
 ## Tech Stack
 
-- Runtime: Node.js
-- Framework: Express 5
-- ORM: Prisma
-- Database: PostgreSQL
-- Auth: JWT + bcrypt
-- Validation: Zod
-- Logging: Winston
+- **Runtime Framework**: Node.js with Express.js (^5.2.1).
+- **Database**: PostgreSQL, accessed via the Prisma ORM (^6.19.2).
+- **Authentication & Security**: Custom JWT-based authentication (jsonwebtoken, bcrypt) combined with cors.
+- **Validation**: Zod (^4.3.6) is used for schema and input validation to guarantee data integrity.
+- **Object Storage (Images)**: Supabase Storage (@supabase/supabase-js) is used, specifically for uploading and managing product images. Images are processed locally using Sharp (^0.34.4) before upload.
+- **Logging**: Winston (^3.19.0) is configured for application-level structured logging.
 
 ## System Architecture
 

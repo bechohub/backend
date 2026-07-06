@@ -1,4 +1,5 @@
 const productService = require('./productService');
+const { applySparseFieldset } = require('../../utils/dto');
 
 const createProduct = async (req, res, next) => {
   try {
@@ -8,7 +9,8 @@ const createProduct = async (req, res, next) => {
       files: req.files || [],
     });
 
-    res.status(201).json({ success: true, data: product });
+    const optimizedProduct = applySparseFieldset(product, req.query.fields);
+    res.status(201).json({ success: true, data: optimizedProduct });
   } catch (error) {
     next(error);
   }
@@ -17,6 +19,9 @@ const createProduct = async (req, res, next) => {
 const listProducts = async (req, res, next) => {
   try {
     const result = await productService.listProducts(req.query);
+    if (req.query.fields) {
+      result.data = applySparseFieldset(result.data, req.query.fields);
+    }
     res.status(200).json({ success: true, ...result });
   } catch (error) {
     next(error);
@@ -31,7 +36,8 @@ const getProductById = async (req, res, next) => {
       return res.status(404).json({ success: false, message: 'Product not found' });
     }
 
-    res.status(200).json({ success: true, data: product });
+    const optimizedProduct = applySparseFieldset(product, req.query.fields);
+    res.status(200).json({ success: true, data: optimizedProduct });
   } catch (error) {
     next(error);
   }
@@ -40,6 +46,9 @@ const getProductById = async (req, res, next) => {
 const getSellerProducts = async (req, res, next) => {
   try {
     const result = await productService.getSellerProducts(req.params.sellerId, req.query);
+    if (req.query.fields) {
+      result.data = applySparseFieldset(result.data, req.query.fields);
+    }
     res.status(200).json({ success: true, ...result });
   } catch (error) {
     next(error);
@@ -54,7 +63,8 @@ const updateProduct = async (req, res, next) => {
       patch: req.body,
     });
 
-    res.status(200).json({ success: true, data: product });
+    const optimizedProduct = applySparseFieldset(product, req.query.fields);
+    res.status(200).json({ success: true, data: optimizedProduct });
   } catch (error) {
     next(error);
   }

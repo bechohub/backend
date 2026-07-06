@@ -151,7 +151,13 @@ const deleteProduct = async ({ productId, sellerUserId }) => {
   }
 
   for (const image of product.images) {
-    await removeProductImage(image.storagePath).catch(() => null);
+    const pathsToDelete = [
+      image.storagePath,
+      image.thumbnailPath,
+      image.mobilePath,
+      image.desktopPath,
+    ].filter(Boolean);
+    await removeProductImage(pathsToDelete).catch(() => null);
   }
 
   await productRepository.deleteProduct(productId);

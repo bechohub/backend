@@ -93,3 +93,5 @@ Thumbs.db
 # Ignore the generated Prisma Client, as it gets generated dynamically on deployment or `npm install`.
 # You can uncomment this if you'd rather not check the client into source control.
 # prisma/client/
+
+/scratch

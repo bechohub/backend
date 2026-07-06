@@ -67,13 +67,19 @@ model Product {
 }
 
 model ProductImage {
-  id          String   @id @default(uuid()) @db.Uuid
-  productId   String   @map("product_id") @db.Uuid
-  imageUrl    String   @map("image_url")
-  storagePath String?  @map("storage_path")
-  sortOrder   Int      @default(0) @map("sort_order")
-  createdAt   DateTime @default(now()) @map("created_at")
-  product     Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+  id            String   @id @default(uuid()) @db.Uuid
+  productId     String   @map("product_id") @db.Uuid
+  imageUrl      String   @map("image_url")
+  storagePath   String?  @map("storage_path")
+  thumbnailUrl  String?  @map("thumbnail_url")
+  thumbnailPath String?  @map("thumbnail_path")
+  mobileUrl     String?  @map("mobile_url")
+  mobilePath    String?  @map("mobile_path")
+  desktopUrl    String?  @map("desktop_url")
+  desktopPath   String?  @map("desktop_path")
+  sortOrder     Int      @default(0) @map("sort_order")
+  createdAt     DateTime @default(now()) @map("created_at")
+  product       Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
 
   @@index([productId])
   @@map("product_images")

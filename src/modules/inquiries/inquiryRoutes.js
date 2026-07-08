@@ -1,14 +1,20 @@
 const express = require('express');
 const inquiryController = require('./inquiryController');
-const { requireAuth } = require('../../middleware/authMiddleware');
+const { authenticate } = require('../../middleware/authMiddleware');
+const validate = require('../../middleware/validate');
+const {
+  createInquirySchema,
+  updateInquiryStatusSchema,
+  inquiryIdParamsSchema,
+} = require('./inquirySchema');
 
 const router = express.Router();
 
-router.use(requireAuth);
+router.use(authenticate);
 
-router.post('/', inquiryController.createInquiry);
+router.post('/', validate(createInquirySchema), inquiryController.createInquiry);
 router.get('/', inquiryController.listUserInquiries);
-router.get('/:id', inquiryController.getInquiryById);
-router.patch('/:id/status', inquiryController.updateInquiryStatus);
+router.get('/:id', validate(inquiryIdParamsSchema), inquiryController.getInquiryById);
+router.patch('/:id/status', validate(updateInquiryStatusSchema), inquiryController.updateInquiryStatus);
 
 module.exports = router;
